@@ -42,17 +42,12 @@ namespace Lab10.Purple
 
                 if (obj is Task3 task3)
                 {
-                    var codesField = typeof(Task3).GetField("_codes", BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (codesField != null)
+                    if (task3.Codes != null)
                     {
-                        var codes = codesField.GetValue(task3) as (string, char)[];
-                        if (codes != null && codes.Length > 0)
+                        dict["Count"] = task3.Codes.Length.ToString();
+                        for (int i = 0; i < task3.Codes.Length; i++)
                         {
-                            dict["Count"] = codes.Length.ToString();
-                            for (int i = 0; i < codes.Length; i++)
-                            {
-                                dict[$"Code{i}"] = codes[i].Item1 + "|" + codes[i].Item2;
-                            }
+                            dict[$"Code{i}"] = task3.Codes[i].Item1 + "|" + task3.Codes[i].Item2;
                         }
                     }
                 }
