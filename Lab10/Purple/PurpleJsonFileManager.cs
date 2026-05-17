@@ -1,101 +1,92 @@
-using Lab9.Purple;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace Lab10.Purple;
-
-public class PurpleJsonFileManager<T> : PurpleFileManager<T> where T : Lab9.Purple.Purple
+namespace Lab10.Purple
 {
-    public PurpleJsonFileManager(string name) : base(name) { }
-
-    public PurpleJsonFileManager(string name, string folderpath, string filename, string fileextension = "txt")
-        : base(name, folderpath, filename, fileextension) { }
-
-    public override void EditFile(string text)
+    public class PurpleJsonFileManager<T> : PurpleFileManager<T> where T : Lab9.Purple.Purple
     {
-        if (string.IsNullOrWhiteSpace(text) || !File.Exists(FullPath))
-            return;
+        public PurpleJsonFileManager(string name) : base(name) { }
+        public PurpleJsonFileManager(string name, string folderPath, string fileName, string fileExtension = "txt")
+            : base(name, folderPath, fileName, fileExtension) { }
 
-        T obj = Deserialize();
-        if (obj == null)
-            return;
-
-        obj.ChangeText(text);
-        Serialize(obj);
-    }
-
-    public override void ChangeFileExtension(string extension)
-    {
-        if (string.IsNullOrWhiteSpace(extension) || extension != "json")
-            return;
-
-        ChangeFileFormat("json");
-    }
-
-    public override void Serialize(T obj)
-    {
-        if (obj == null)
-            return;
-
-        var dto = new Dictionary<string, object>
+        public override void EditFile(string text)
         {
-            ["Type"] = obj.GetType().Name,
-            ["Input"] = obj.Input
-        };
-
-        var table = GetTask4Table(obj);
-        if (table.Length > 0)
-        {
-            dto["Items"] = table
-                .Select(item => new Dictionary<string, object>
-                {
-                    ["Item1"] = item.Item1,
-                    ["Item2"] = item.Item2.ToString()
-                })
-                .ToArray();
+            var obj = Deserialize();
+            if (obj == null) return;
+            obj.ChangeText(text);
+            Serialize(obj);
         }
-
-        string convert = JsonConvert.SerializeObject(dto, Formatting.Indented);
-
-        ChangeFileFormat("json");
-        if (!File.Exists(FullPath))
+        public override void ChangeFileExtension(string extension)
         {
-            CreateFile();
+            base.ChangeFileExtension("json");
         }
-        base.EditFile(convert);
-    }
-
-    public override T Deserialize()
-    {
-        if (!File.Exists(FullPath) || FileExtension != "json")
-            return null;
-
-        try
+        public override void Serialize(T obj)
         {
-            var json = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(FullPath));
-            if (json == null)
-                return null;
+            if (obj == null) return;
 
-            string typeName = json["Type"]?.ToString() ?? nameof(Task1);
-            string input = json["Input"]?.ToString() ?? "";
+            var jsonObject = new JObject();
+            jsonObject["Type"] = obj.GetType().Name;
+            jsonObject["Input"] = obj.Input;
 
-            (string, char)[] table = Array.Empty<(string, char)>();
-            if (json["Items"] is JArray items && items.Count > 0)
+            if (obj is Lab9.Purple.Task4 task4 && task4.Codes != null)
             {
-                table = items
-                    .Select(item => (
-                        item["Item1"]?.ToString() ?? "",
-                        string.IsNullOrEmpty(item["Item2"]?.ToString()) ? '\0' : item["Item2"]!.ToString()[0]))
-                    .ToArray();
+                var arr = new JArray();
+                foreach (var c in task4.Codes)
+                {
+                    var o = new JObject();
+                    o["pair"] = c.Item1;
+                    o["code"] = c.Item2.ToString();
+                    arr.Add(o);
+                }
+                jsonObject["Codes"] = arr;
             }
 
-            T obj = CreateTask(typeName, input, table);
-            obj?.Review();
-            return obj;
+            File.WriteAllText(FullPath, jsonObject.ToString());
         }
-        catch
+        public override T Deserialize()
         {
-            return null;
+            if (!File.Exists(FullPath)) return null;
+
+            string jsonString = File.ReadAllText(FullPath);
+            JObject jsonObject = JObject.Parse(jsonString);
+
+            string typeName = jsonObject["Type"]?.ToString();
+            if (typeName == null) return null;
+
+            string input = jsonObject["Input"]?.ToString() ?? "";
+
+            T obj = null;
+            if (typeName == "Task1") obj = new Lab9.Purple.Task1(input) as T;
+            else if (typeName == "Task2") obj = new Lab9.Purple.Task2(input) as T;
+            else if (typeName == "Task3") obj = new Lab9.Purple.Task3(input) as T;
+            else if (typeName == "Task4")
+            {
+                (string, char)[] codes = null;
+
+                if (jsonObject["Codes"] is JArray codesArr && codesArr.Count > 0)
+                {
+                    codes = codesArr
+                        .Select(x =>
+                        {
+                            var pair = x["pair"]?.ToString();
+                            var code = x["code"]?.ToString();
+                            if (pair == null || code == null || code.Length == 0) return (null, '\0');
+                            return (pair, code[0]);
+                        })
+                        .ToArray();
+                }
+                obj = new Lab9.Purple.Task4(input, codes) as T;
+            }
+
+            if (obj == null) return null;
+            obj.Review();
+            return obj;
         }
     }
 }
