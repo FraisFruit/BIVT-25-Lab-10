@@ -1,121 +1,121 @@
+using Lab9.Purple;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Lab10.Purple
 {
-    public class PurpleTxtFileManager<T> : PurpleFileManager<T> where T : Lab9.Purple.Purple
+    public class PurpleTxtFileManager<T> : PurpleFileManager<T>
+        where T : Lab9.Purple.Purple
     {
         public PurpleTxtFileManager(string name) : base(name) { }
-        public PurpleTxtFileManager(string name, string folderPath, string fileName, string fileExtension = "txt")
-            : base(name, folderPath, fileName, fileExtension) { }
 
-        public override void EditFile(string text)
+        public PurpleTxtFileManager(string name, string folderPath, string fileName, string fileExtension = "txt") : base(name, folderPath, fileName, fileExtension) { }
+
+        public override void EditFile(string content)
         {
             T obj = Deserialize();
-            if (obj == null) return;
-            obj.ChangeText(text);
-            Serialize(obj);
+            if (obj != null)
+            {
+                obj.ChangeText(content);
+                Serialize(obj);
+            }
         }
         public override void ChangeFileExtension(string extension)
         {
-            base.ChangeFileExtension("txt");
+            ChangeFileFormat("txt");
         }
+
         public override void Serialize(T obj)
         {
-            if (obj == null) return;
+            if (obj != null)
+            {
+                var dict = new Dictionary<string, string>();
+                dict["Type"] = obj.GetType().Name;
+                dict["Input"] = obj.Input;
 
-            var dict = new Dictionary<string, string>();
-            dict["Type"] = obj.GetType().Name;
-            dict["Input"] = obj.Input;
-
-            if (obj is Lab9.Purple.Task1 task1)
-            {
-                dict["Output"] = task1.Output;
-            }
-            else if (obj is Lab9.Purple.Task2 task2)
-            {
-                dict["Output"] = string.Join(" ", task2.Output);
-            }
-            else if (obj is Lab9.Purple.Task3 task3)
-            {
-                dict["Output"] = task3.Output;
-            }
-            else if (obj is Lab9.Purple.Task4 task4)
-            {
-                dict["Output"] = task4.Output;
-
-                if (task4.Codes != null)
+                if (obj is Task3 task3)
                 {
-                    dict["Codes"] = string.Join(";", task4.Codes.Select(x => $"{x.Item1},{x.Item2}"));
+                    dict["Count"] = task3.Codes.Length.ToString();
+                    for (int i = 0; i < task3.Codes.Length; i++)
+                        dict[$"Code{i}"] = task3.Codes[i].Item1 + "|" + task3.Codes[i].Item2;
                 }
-            }
+                else if (obj is Task4 task4)
+                {
+                    dict["Count"] = task4.Codes.Length.ToString();
+                    for (int i = 0; i < task4.Codes.Length; i++)
+                        dict[$"Code{i}"] = task4.Codes[i].Item1 + "|" + task4.Codes[i].Item2;
+                }
 
-            var lines = dict.Select(x => $"{x.Key}:{x.Value}");
-            File.WriteAllLines(FullPath, lines);
+                string[] result = new string[dict.Count];
+                int z = 0;
+                foreach (var el in dict)
+                    result[z++] = el.Key + ":" + el.Value;
+
+                File.WriteAllLines(FullPath, result);
+            }
         }
         public override T Deserialize()
         {
-            if (!File.Exists(FullPath)) return null;
-
-            var lines = File.ReadAllLines(FullPath);
-            if (lines.Length == 0) return null;
-
-            var dict = new Dictionary<string, string>();
-
-            foreach (var line in lines)
+            if (File.Exists(FullPath))
             {
-                var parts = line.Split(':', 2);
-                if (parts.Length == 2)
+                var dict = new Dictionary<string, string>();
+                bool isA = false;
+                using (StreamReader reader = new StreamReader(FullPath))
                 {
-                    dict[parts[0]] = parts[1];
+                    string line;
+
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        int i = line.IndexOf(':');
+                        if (i >= 0)
+                            dict[line.Substring(0, i)] = line.Substring(i + 1);
+
+                    }
                 }
-            }
+                if (!dict.ContainsKey("Type") || !dict.ContainsKey("Input")) 
+                    return null;
+                string type = dict["Type"];
+                string input = dict["Input"];
 
-            if (!dict.ContainsKey("Type") || !dict.ContainsKey("Input")) return null;
-
-            string type = dict["Type"]; string input = dict["Input"];
-            T obj = null;
-
-            if (type == "Task1")
-            {
-                obj = new Lab9.Purple.Task1(input) as T;
-            }
-            else if (type == "Task2")
-            {
-                obj = new Lab9.Purple.Task2(input) as T;
-            }
-            else if (type == "Task3")
-            {
-                obj = new Lab9.Purple.Task3(input) as T;
-            }
-            else if (type == "Task4")
-            {
                 (string, char)[] codes = null;
-
-                if (dict.ContainsKey("Codes"))
+                if (dict.ContainsKey("Count"))
                 {
-                    codes = dict["Codes"]
-                        .Split(';', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(x =>
-                        {
-                            var parts = x.Split(',');
-                            if (parts.Length != 2) return (null, '\0');
+                    int count = int.Parse(dict["Count"]);
+                    codes = new (string, char)[count];
+                    for (int x = 0; x < count; x++)
+                    {
+                        string temp = dict[$"Code{x}"];
 
-                            return (parts[0], parts[1][0]);
-                        })
-                        .ToArray();
+                        codes[x] = (temp.Split("|")[0], temp[temp.Length - 1]);
+                    }
                 }
-                obj = new Lab9.Purple.Task4(input, codes) as T;
+
+                Lab9.Purple.Purple obj;
+                switch (type)
+                {
+                    case "Task1":
+                        obj = new Task1(input);
+                        break;
+                    case "Task2":
+                        obj = new Task2(input);
+                        break;
+                    case "Task3":
+                        obj = new Task3(input);
+                        break;
+                    case "Task4":
+                        obj = new Task4(input, codes);
+                        break;
+                    default:
+                        return null;
+                }
+                obj.Review();
+                return (T)obj;
             }
-
-            if (obj == null) return null;
-            obj.Review();
-
-            return obj;
+            else
+                return null;
         }
     }
 }
