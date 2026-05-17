@@ -3,36 +3,27 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Lab10.Purple
 {
-    public abstract class PurpleFileManager<T> : MyFileManager, ISerializer<T>
-         where T : Lab9.Purple.Purple
+    public abstract class PurpleFileManager<T> : MyFileManager, ISerializer<T> where T: Lab9.Purple.Purple
     {
-        public PurpleFileManager(string name) : base(name) { }
+        public PurpleFileManager(string name) : base (name) { }
+        public PurpleFileManager(string name, string folderPath, string fileName, string fileExtension = "txt")
+            : base (name, folderPath, fileName, fileExtension) { }
 
-        public PurpleFileManager(string name, string folderName, string fileName, string fileExtension = "txt") : base(name, folderName, fileName, fileExtension) { }
-
-        public override void EditFile(string content) 
+        public override void EditFile(string text)
         {
-            if (File.Exists(FullPath) && !string.IsNullOrEmpty(FullPath))
-            {
-                base.EditFile(content);
-            }
+            if (!File.Exists(FullPath)) return;
+            base.EditFile(text);
         }
         public override void ChangeFileExtension(string extension)
         {
-            if (File.Exists(FullPath) && Path.Exists(FolderPath))
-            {
-                string content = File.ReadAllText(FullPath);
-                string oldPath = FullPath;
-                ChangeFileFormat(extension);
-                File.WriteAllText(FullPath, content);
-                File.Delete(oldPath);
-            }
+            if (!File.Exists(FullPath)) return;
+            base.ChangeFileExtension(extension);
         }
-
-        public abstract T Deserialize();
         public abstract void Serialize(T obj);
+        public abstract T Deserialize();
     }
 }
