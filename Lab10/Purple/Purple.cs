@@ -1,116 +1,105 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Lab10.Purple
 {
-    public class Purple<T> where T : Lab9.Purple.Purple
+    public class Purple<T> where T: Lab9.Purple.Purple
     {
-        private PurpleFileManager<T>? _manager;
+        private PurpleFileManager<T> _manager;
         private T[] _tasks;
 
-        public PurpleFileManager<T>? Manager => _manager;
+        public PurpleFileManager<T> Manager => _manager;
         public T[] Tasks => _tasks;
 
-        public Purple(T[]? tasks = null)
+        public Purple(T[] tasks)
         {
-            if (tasks == null)
-                _tasks = new T[0];
-            else
-                _tasks = tasks;
+            _tasks = tasks ?? new T[0];
         }
-
-        public Purple(PurpleFileManager<T> manager, T[]? tasks = null)
+        public Purple(PurpleFileManager<T> manager,  T[] tasks = null)
         {
             _manager = manager;
-            if (tasks != null)
-                _tasks = tasks;
+            _tasks = tasks ?? new T[0];
         }
         public Purple(T[] tasks, PurpleFileManager<T> manager)
         {
-            if (tasks == null)
-                _tasks = new T[0];
-            else
-                _tasks = tasks;
             _manager = manager;
+            _tasks = tasks ?? new T[0];
         }
+        public Purple() 
+        {
+            _tasks = new T[0];
+        }
+        public void Add(T obj)
+        {
+            if (obj == null) return;
+            
+            Array.Resize(ref _tasks, _tasks.Length + 1);
+            _tasks[_tasks.Length - 1] = obj;
+        }
+        public void Add(T[] objs)
+        {
+            if (objs == null) return;
+            for(int i = 0; i < objs.Length; i++)
+            {
+                Add(objs[i]);
+            }
+        }
+        public void Remove(T obj)
+        {
+            if (obj == null) return;
 
-        public void Add(T task)
-        {
-            if(task != null)
+            int index = -1;
+            for (int i = 0; i < _tasks.Length; i++)
             {
-                Array.Resize(ref _tasks, _tasks.Length + 1);
-                _tasks[_tasks.Length - 1] = task;
+                if (_tasks[i] == obj) index = i; break;
             }
-        }
-        public void Add(T[] tasks)
-        {
-            if(tasks != null)
+            if (index == -1) return;
+
+            T[] newTasks = new T[_tasks.Length - 1];
+            for (int i = 0; i < newTasks.Length; i++)
             {
-                foreach (T el in tasks)
-                    Add(el);
+                if (i < index) newTasks[i] = _tasks[i];
+                else newTasks[i] = _tasks[i + 1];
             }
-        }
-        public void Remove(T task)
-        {
-            if(task != null && _tasks.Length > 0 && Array.IndexOf(_tasks, task) != -1)
-            {
-                int i = Array.IndexOf(_tasks, task);
-                T[] result = new T[_tasks.Length - 1];
-                int x = 0, y = 0;
-                while(x < result.Length)
-                {
-                    if (y == i)
-                    {
-                        y++;
-                        continue;
-                    }
-                    result[x++] = _tasks[y++];
-                }
-                _tasks = result;
-            }
+
+            _tasks = newTasks;
         }
         public void Clear()
         {
-            _tasks = Array.Empty<T>();
-            if (Directory.Exists(_manager.FolderPath) && !string.IsNullOrEmpty(_manager.FolderPath) && _manager != null)
+            _tasks = new T[0];
+            if (_manager != null && Directory.Exists(_manager.FolderPath)) 
+            {
                 Directory.Delete(_manager.FolderPath, true);
+            }
         }
-
         public void SaveTasks()
         {
-            if (_manager != null)
+            if (_manager == null || _tasks == null) return;
+
+            for (int i = 0; i < _tasks.Length; i++)
             {
-                for (int x = 0; x < _tasks.Length; x++)
-                {
-                    _manager.ChangeFileName($"task{x}");
-                    _manager.Serialize(_tasks[x]);
-                }
+                _manager.ChangeFileName($"task{i}");
+                _manager.Serialize(_tasks[i]);
             }
         }
-
         public void LoadTasks()
         {
-            if(_manager != null)
+            if (_manager == null || _tasks == null) return;
+
+            for (int i = 0; i < _tasks.Length; i++)
             {
-                for(int x = 0; x < _tasks.Length; x++)
-                {
-                    _manager.ChangeFileName($"task{x}");
-                    _tasks[x] = _manager.Deserialize();
-                }
-            }
+                _manager.ChangeFileName($"task{i}");
+                _tasks[i] = _manager.Deserialize();
+            }   
         }
-        public void ChangeManager(PurpleFileManager<T> manager)
+        public void ChangeManager(PurpleFileManager<T> newManager)
         {
-            if(_manager != null && !string.IsNullOrWhiteSpace(_manager.FolderPath))
+            if (newManager == null) return;
+            _manager = newManager;
+
+            string folderPath = _manager.Name;
+            if (!Directory.Exists(folderPath))
             {
-                string path = Path.Combine(Directory.GetCurrentDirectory(), manager.Name);
-                Directory.CreateDirectory(path);
-                _manager.SelectFolder(path);
-                _manager = manager;
+                Directory.CreateDirectory(folderPath);
             }
+            _manager.SelectFolder(folderPath);
         }
     }
 }
